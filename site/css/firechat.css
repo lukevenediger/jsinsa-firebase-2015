@@ -1,0 +1,31 @@
+.list-group .list-group-item .row-content {
+    min-height: 20px;
+    width: calc(100% - 40px);
+}
+.list-group {
+    overflow: auto;
+    height: 125px;
+}
+
+.list-group.members {
+    overflow: auto;
+    height: 141px;
+}
+
+.snippets {
+    display: none;
+}
+
+.navbar-header h3 {
+    padding-left: 10px;
+    margin-top: 10px;
+}
+
+.panel-heading h2 {
+    margin: 0;
+}
+
+div.room-info button {
+    width: 100%;
+}
+

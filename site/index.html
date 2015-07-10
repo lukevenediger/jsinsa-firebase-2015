@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FireChat</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <!-- Include roboto.css to use the Roboto web font, material.css to include the theme and ripples.css to style the ripple effect -->
+    <link href="css/roboto.min.css" rel="stylesheet">
+    <link href="css/material.min.css" rel="stylesheet">
+    <link href="css/ripples.min.css" rel="stylesheet">
+    <link href="css/firechat.css" rel="stylesheet">
+
+    <script src="js/firechat.js"></script>
+</head>
+<body>
+<div class="container">
+
+    <div class="navbar navbar-default">
+        <div class="navbar-header">
+            <h3><span id="userFullName"></span>FireChat</h3>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <h2 id="topic">(no topic)</h2>
+                </div>
+                <div class="panel-body list-group messages" id="messages">
+                </div>
+            </div>
+
+            <!-- message input box -->
+            <div class="form-group">
+                <div class="form-control-wrapper">
+                    <input class="form-control empty" id="inputMessage" type="text">
+                    <div class="floating-label">Type something...</div>
+                    <span class="material-input"></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 room-info">
+
+            <!-- member list -->
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Members</h3>
+                </div>
+                <div class="panel-body list-group members" id="members">
+                </div>
+            </div>
+
+            <!-- leave button -->
+            <button type="button" id="leave" class="btn btn-primary">Leave</button>
+        </div>
+    </div>
+
+
+</div>
+
+<div class="modal" id="loginBox">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Welcome to FireChat</h4>
+            </div>
+            <div class="modal-body form-group">
+                <div class="form-group">
+                    <label class="control-label" for="fullName">What's your name?</label>
+                    <input class="form-control input-lg empty" type="text" id="fullName" disabled>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="login" class="btn btn-primary" disabled>Enter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="topicBox">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Change The Topic</h4>
+            </div>
+            <div class="modal-body form-group">
+                <div class="form-group">
+                    <input class="form-control input-lg empty" type="text" id="newTopic">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancelTopicChange" class="btn">Cancel</button>
+                <button type="button" id="changeTopic" class="btn btn-primary">Change</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="snippets">
+    <div id="snippet-message" class="list-group-item">
+        <div class="row-action-primary">
+            <p class="list-group-item-text">
+                <strong>${INITIALS}:</strong>
+            </p>
+        </div>
+        <div class="row-content">
+            <p class="list-group-item-text">
+                ${MESSAGE}
+            </p>
+        </div>
+    </div>
+    <div id="snippet-member" class="list-group-item" userId="${USERID}">
+        <div class="row-content">
+            <p class="list-group-item-text">
+                ${FULLNAME}
+            </p>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    FireChat.initialise();
+</script>
+</body>
+</html>
