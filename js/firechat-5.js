@@ -2,9 +2,14 @@
 /* jshint -W097 */
 'use strict';
 
+/******************************
+ * 5 - Shared Data
+ ******************************/
+
 var view = require('./view.js'),
     q = require('Q'),
-    Firebase = require('firebase');
+    Firebase = require('firebase'),
+    Settings = require('./settings.js');
 
 function FireChat() {
 
@@ -45,26 +50,14 @@ function FireChat() {
     }
 
     function onAddMessage(message) {
-        firebase.child('chatroom')
-            .child('messages')
-            .push({
-                author: fullName,
-                userId: userId,
-                body: message
-            });
-    }
-
-    function onChangeTopic(newTopic) {
-        firebase.child('chatroom')
-            .child('topic')
-            .set(newTopic);
+        view.addMessage(fullName, message);
     }
 
     function initialiseFirebase() {
         var deferred = q.defer();
 
         // Initialise firebase
-        firebase = new Firebase('https://jsinsa2015.firebaseio.com/');
+        firebase = new Firebase(Settings.firebaseUrl);
 
         // Do anonymous auth
         firebase.authAnonymously(function(error, context) {
@@ -105,23 +98,18 @@ function FireChat() {
 
     }
 
+    function onChangeTopic(newTopic) {
+        firebase.child('chatroom')
+            .child('topic')
+            .set(newTopic);
+    }
+
     function listenForTopicChanges() {
 
         firebase.child('chatroom')
             .child('topic')
             .on('value', function(snapshot) {
                 view.setTopic(snapshot.val());
-            });
-
-    }
-
-    function listenForMessages() {
-
-        firebase.child('chatroom')
-            .child('messages')
-            .on('child_added', function(snapshot) {
-                var message = snapshot.val();
-                view.addMessage(message.author, message.body);
             });
 
     }
@@ -142,12 +130,10 @@ function FireChat() {
                 userId = uid;
                 listenForPresenceUpdates();
                 listenForTopicChanges();
-                listenForMessages();
                 console.log('Initialised');
                 view.enableLoginBox();
             });
     };
-
 
 }
 

@@ -2,37 +2,29 @@
 /* jshint -W097 */
 'use strict';
 
+/******************************
+ * 0 - Base
+ ******************************/
+
 var view = require('./view.js'),
     q = require('Q'),
-    Firebase = require('firebase');
+    Firebase = require('firebase'),
+    Settings = require('./settings.js');
 
 function FireChat() {
 
     var fullName;
     var userId;
-    var firebase;
 
     function onEnter(name) {
         fullName = name;
         view.addMember(name, userId);
         view.setUsername(name);
-
-        firebase.child('chatroom')
-            .child('members')
-            .child(userId)
-            .set({
-                dateAdded: Firebase.ServerValue.TIMESTAMP
-            });
     }
 
     function onLeave() {
         view.removeMember(userId);
         view.clearMessages();
-
-        firebase.child('chatroom')
-            .child('members')
-            .child(userId)
-            .set(null);
     }
 
     function onAddMessage(message) {
@@ -46,11 +38,7 @@ function FireChat() {
     function initialiseFirebase() {
         var deferred = q.defer();
 
-        firebase = new Firebase('https://jsinsademo.firebaseio.com/');
-
-        firebase.authAnonymously(function (error, context) {
-            deferred.resolve(context.uid);
-        });
+        userId = new Date().getTime() + '';
 
         return deferred.promise;
     }
@@ -68,7 +56,7 @@ function FireChat() {
         view.initialise()
             .then(initialiseFirebase())
             .then(function(uid) {
-                userId = uid;
+                //userId = uid;
                 view.enableLoginBox();
                 console.log('initialised');
             });

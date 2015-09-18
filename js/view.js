@@ -1,5 +1,6 @@
 /* globals require, module */
 /* jshint -W097 */
+/* globals global, setTimeout, clearTimeout */
 'use strict';
 
 var $ = require('jquery'),
@@ -8,6 +9,7 @@ var $ = require('jquery'),
 function View() {
 
     var self = this;
+    var pingHideTimeout;
 
     function hookEvents() {
 
@@ -24,6 +26,7 @@ function View() {
         });
 
         $('#leave').click(function() {
+            global.document.title = 'Welcome to FireChat';
             $('#userFullName').text('');
             $('#loginBox').show();
             $('#fullName').focus();
@@ -62,6 +65,10 @@ function View() {
             $('#newTopic').val(topic)
                 .focus();
         });
+
+        $('#ping').click(function() {
+            self.onPing();
+        });
     }
 
     this.initialise = function() {
@@ -69,7 +76,9 @@ function View() {
 
         $(function() {
             hookEvents();
+            global.document.title = 'Welcome to FireChat';
             $('#loginBox').show();
+            $('#ping').hide();
             $('#fullName').focus();
             deferred.resolve();
         });
@@ -122,6 +131,7 @@ function View() {
 
     this.setUsername = function(name) {
         $('#userFullName').text(name + ' - ');
+        global.document.title = name + ' - FireChat';
     };
 
     this.removeMember = function(userId) {
@@ -130,17 +140,34 @@ function View() {
     };
 
     this.clearMessages = function() {
-        $('#messages').empty();
+        //$('#messages').empty();
     };
 
     this.setTopic = function(topic) {
-        $('#topic').text(topic);
+        $('#topic').text(topic || '(no topic)');
+    };
+
+    this.showPing = function(from) {
+        clearTimeout(pingHideTimeout);
+        $('#pingMessage').text('  --- PING from ' + from);
+        pingHideTimeout = setTimeout(function() {
+            $('#pingMessage').text('');
+        }, 5000);
+    };
+
+    this.showPingButton = function() {
+        $('#ping').show();
+    };
+
+    this.hidePingButton = function() {
+        $('#ping').hide();
     };
 
     this.onEnter = function() {};
     this.onLeave = function() {};
     this.onAddMessage = function() {};
     this.onChangeTopic = function() {};
+    this.onPing = function() {};
 }
 
 module.exports = new View();

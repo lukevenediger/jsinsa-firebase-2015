@@ -2,9 +2,14 @@
 /* jshint -W097 */
 'use strict';
 
+/******************************
+ * 4 - Presence
+ ******************************/
+
 var view = require('./view.js'),
     q = require('Q'),
-    Firebase = require('firebase');
+    Firebase = require('firebase'),
+    Settings = require('./settings.js');
 
 function FireChat() {
 
@@ -20,7 +25,10 @@ function FireChat() {
         firebase.child('chatroom')
             .child('members')
             .child(userId)
-            .set({ dateAdded: Firebase.ServerValue.TIMESTAMP });
+            .set({
+                name: name,
+                dateAdded: Firebase.ServerValue.TIMESTAMP
+            });
 
         // Make sure we remove ourselves
         // if the connection dies
@@ -53,7 +61,7 @@ function FireChat() {
         var deferred = q.defer();
 
         // Initialise firebase
-        firebase = new Firebase('https://jsinsa2015.firebaseio.com/');
+        firebase = new Firebase(Settings.firebaseUrl);
 
         // Do anonymous auth
         firebase.authAnonymously(function(error, context) {
@@ -65,6 +73,33 @@ function FireChat() {
         });
 
         return deferred.promise;
+    }
+
+    function listenForPresenceUpdates() {
+
+        // User joins
+        firebase.child('chatroom')
+            .child('members')
+            .on('child_added', function(snapshot) {
+                if (snapshot.key() === userId) {
+                    // Ignore our own presence announcement
+                    return;
+                }
+                var user = snapshot.val();
+                view.addMember(user.name, snapshot.key());
+            });
+
+        // User leaves
+        firebase.child('chatroom')
+            .child('members')
+            .on('child_removed', function(snapshot) {
+                if (snapshot.key() === userId) {
+                    // Ignore our own presence announcement
+                    return;
+                }
+                view.removeMember(snapshot.key());
+            });
+
     }
 
     // public API
@@ -81,6 +116,7 @@ function FireChat() {
             .then(initialiseFirebase)
             .then(function initialised(uid) {
                 userId = uid;
+                listenForPresenceUpdates();
                 console.log('Initialised');
                 view.enableLoginBox();
             });

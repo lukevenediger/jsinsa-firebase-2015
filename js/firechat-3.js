@@ -2,9 +2,14 @@
 /* jshint -W097 */
 'use strict';
 
+/******************************
+ * 3 - Join, Leave, Disconnect
+ ******************************/
+
 var view = require('./view.js'),
     q = require('Q'),
-    Firebase = require('firebase');
+    Firebase = require('firebase'),
+    Settings = require('./settings.js');
 
 function FireChat() {
 
@@ -20,9 +25,15 @@ function FireChat() {
         firebase.child('chatroom')
             .child('members')
             .child(userId)
-            .set({
-                dateAdded: Firebase.ServerValue.TIMESTAMP
-            });
+            .set({ dateAdded: Firebase.ServerValue.TIMESTAMP });
+
+        // Make sure we remove ourselves
+        // if the connection dies
+        firebase.child('chatroom')
+            .child('members')
+            .child(userId)
+            .onDisconnect()
+            .remove();
     }
 
     function onLeave() {
@@ -46,10 +57,16 @@ function FireChat() {
     function initialiseFirebase() {
         var deferred = q.defer();
 
-        firebase = new Firebase('https://jsinsademo.firebaseio.com/');
+        // Initialise firebase
+        firebase = new Firebase(Settings.firebaseUrl);
 
-        firebase.authAnonymously(function (error, context) {
-            deferred.resolve(context.uid);
+        // Do anonymous auth
+        firebase.authAnonymously(function(error, context) {
+            if (error) {
+                deferred.reject(error, context);
+            } else {
+                deferred.resolve(context.uid);
+            }
         });
 
         return deferred.promise;
@@ -66,11 +83,11 @@ function FireChat() {
 
         // Initialise the view
         view.initialise()
-            .then(initialiseFirebase())
-            .then(function(uid) {
+            .then(initialiseFirebase)
+            .then(function initialised(uid) {
                 userId = uid;
+                console.log('Initialised');
                 view.enableLoginBox();
-                console.log('initialised');
             });
     };
 

@@ -3,41 +3,157 @@
 /* jshint -W097 */
 'use strict';
 
+/******************************
+ * 7 - Once-Off Messages
+ ******************************/
+
 var view = require('./view.js'),
     q = require('Q'),
-    Firebase = require('firebase');
+    Firebase = require('firebase'),
+    Settings = require('./settings.js');
 
 function FireChat() {
 
     var fullName;
     var userId;
+    var firebase;
 
     function onEnter(name) {
         fullName = name;
-        userId = new Date().getTime() + '';
         view.addMember(name, userId);
         view.setUsername(name);
+
+        firebase.child('chatroom')
+            .child('members')
+            .child(userId)
+            .set({
+                name: name,
+                dateAdded: Firebase.ServerValue.TIMESTAMP
+            });
+
+        // Make sure we remove ourselves
+        // if the connection dies
+        firebase.child('chatroom')
+            .child('members')
+            .child(userId)
+            .onDisconnect()
+            .remove();
     }
 
     function onLeave() {
         view.removeMember(userId);
         view.clearMessages();
+
+        firebase.child('chatroom')
+            .child('members')
+            .child(userId)
+            .set(null);
     }
 
     function onAddMessage(message) {
-        view.addMessage(fullName, message);
+        firebase.child('chatroom')
+            .child('messages')
+            .push({
+                author: fullName,
+                userId: userId,
+                body: message
+            });
     }
 
     function onChangeTopic(newTopic) {
-        view.setTopic(newTopic);
+        firebase.child('chatroom')
+            .child('topic')
+            .set(newTopic);
     }
 
     function initialiseFirebase() {
         var deferred = q.defer();
 
-        deferred.resolve();
+        // Initialise firebase
+        firebase = new Firebase(Settings.firebaseUrl);
+
+        // Do anonymous auth
+        firebase.authAnonymously(function(error, context) {
+            if (error) {
+                deferred.reject(error, context);
+            } else {
+                deferred.resolve(context.uid);
+            }
+        });
 
         return deferred.promise;
+    }
+
+    function listenForPresenceUpdates() {
+
+        // User joins
+        firebase.child('chatroom')
+            .child('members')
+            .on('child_added', function(snapshot) {
+                if (snapshot.key() === userId) {
+                    // Ignore our own presence announcement
+                    return;
+                }
+                var user = snapshot.val();
+                view.addMember(user.name, snapshot.key());
+            });
+
+        // User leaves
+        firebase.child('chatroom')
+            .child('members')
+            .on('child_removed', function(snapshot) {
+                if (snapshot.key() === userId) {
+                    // Ignore our own presence announcement
+                    return;
+                }
+                view.removeMember(snapshot.key());
+            });
+
+    }
+
+    function listenForTopicChanges() {
+
+        firebase.child('chatroom')
+            .child('topic')
+            .on('value', function(snapshot) {
+                view.setTopic(snapshot.val());
+            });
+
+    }
+
+    function listenForMessages() {
+
+        firebase.child('chatroom')
+            .child('messages')
+            .on('child_added', function(snapshot) {
+                var message = snapshot.val();
+                view.addMessage(message.author, message.body);
+            });
+
+    }
+
+    function onPing() {
+        firebase.child('chatroom')
+            .child('ping')
+            .set({
+                from: fullName
+            });
+    }
+
+    function listenForPings() {
+
+        firebase.child('chatroom')
+            .child('ping')
+            .on('value', function(snapshot) {
+
+                if (snapshot.val()) {
+                    view.showPing(snapshot.val().from);
+
+                    firebase.child('chatroom')
+                        .child('ping')
+                        .remove();
+                }
+            });
     }
 
     // public API
@@ -48,13 +164,20 @@ function FireChat() {
         view.onLeave = onLeave;
         view.onAddMessage = onAddMessage;
         view.onChangeTopic = onChangeTopic;
+        view.onPing = onPing;
 
         // Initialise the view
         view.initialise()
-            .then(initialiseFirebase())
-            .then(function() {
+            .then(initialiseFirebase)
+            .then(function initialised(uid) {
+                userId = uid;
+                listenForPresenceUpdates();
+                listenForTopicChanges();
+                listenForMessages();
+                listenForPings();
+                console.log('Initialised');
                 view.enableLoginBox();
-                console.log('initialised');
+                view.showPingButton();
             });
     };
 
@@ -62,9 +185,21 @@ function FireChat() {
 
 module.exports = new FireChat();
 
-},{"./view.js":2,"Q":3,"firebase":5}],2:[function(require,module,exports){
+},{"./settings.js":2,"./view.js":3,"Q":4,"firebase":6}],2:[function(require,module,exports){
 /* globals require, module */
 /* jshint -W097 */
+'use strict';
+
+module.exports = {
+    // firebase: ''
+    firebaseUrl: 'https://derivcodev-demo.firebaseio.com/'
+};
+
+},{}],3:[function(require,module,exports){
+(function (global){
+/* globals require, module */
+/* jshint -W097 */
+/* globals global, setTimeout, clearTimeout */
 'use strict';
 
 var $ = require('jquery'),
@@ -73,6 +208,7 @@ var $ = require('jquery'),
 function View() {
 
     var self = this;
+    var pingHideTimeout;
 
     function hookEvents() {
 
@@ -89,6 +225,7 @@ function View() {
         });
 
         $('#leave').click(function() {
+            global.document.title = 'Welcome to FireChat';
             $('#userFullName').text('');
             $('#loginBox').show();
             $('#fullName').focus();
@@ -127,6 +264,10 @@ function View() {
             $('#newTopic').val(topic)
                 .focus();
         });
+
+        $('#ping').click(function() {
+            self.onPing();
+        });
     }
 
     this.initialise = function() {
@@ -134,7 +275,9 @@ function View() {
 
         $(function() {
             hookEvents();
+            global.document.title = 'Welcome to FireChat';
             $('#loginBox').show();
+            $('#ping').hide();
             $('#fullName').focus();
             deferred.resolve();
         });
@@ -187,6 +330,7 @@ function View() {
 
     this.setUsername = function(name) {
         $('#userFullName').text(name + ' - ');
+        global.document.title = name + ' - FireChat';
     };
 
     this.removeMember = function(userId) {
@@ -195,22 +339,41 @@ function View() {
     };
 
     this.clearMessages = function() {
-        $('#messages').empty();
+        //$('#messages').empty();
     };
 
     this.setTopic = function(topic) {
-        $('#topic').text(topic);
+        $('#topic').text(topic || '(no topic)');
+    };
+
+    this.showPing = function(from) {
+        clearTimeout(pingHideTimeout);
+        $('#pingMessage').text('  --- PING from ' + from);
+        pingHideTimeout = setTimeout(function() {
+            $('#pingMessage').text('');
+        }, 5000);
+    };
+
+    this.showPingButton = function() {
+        $('#ping').show();
+    };
+
+    this.hidePingButton = function() {
+        $('#ping').hide();
     };
 
     this.onEnter = function() {};
     this.onLeave = function() {};
     this.onAddMessage = function() {};
     this.onChangeTopic = function() {};
+    this.onPing = function() {};
 }
 
 module.exports = new View();
 
-},{"Q":3,"jquery":6}],3:[function(require,module,exports){
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+
+},{"Q":4,"jquery":7}],4:[function(require,module,exports){
 (function (process){
 // vim:ts=4:sts=4:sw=4:
 /*!
@@ -2263,7 +2426,7 @@ return Q;
 
 }).call(this,require('_process'))
 
-},{"_process":4}],4:[function(require,module,exports){
+},{"_process":5}],5:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -2355,7 +2518,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 /*! @license Firebase v2.2.7
     License: https://www.firebase.com/terms/terms-of-service.html */
 (function() {var h,aa=this;function n(a){return void 0!==a}function ba(){}function ca(a){a.ub=function(){return a.tf?a.tf:a.tf=new a}}
@@ -2621,7 +2784,7 @@ function Nc(a,b){J(!b||!0===a||!1===a,"Can't turn on custom loggers persistently
 
 module.exports = Firebase;
 
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v2.1.4
  * http://jquery.com/
@@ -11837,4 +12000,4 @@ return jQuery;
 });
 
 
-//# sourceMappingURL=firechat.js.map
+//# sourceMappingURL=FireChat.js.map

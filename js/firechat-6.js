@@ -2,9 +2,14 @@
 /* jshint -W097 */
 'use strict';
 
+/******************************
+ * 6 - Public Messages
+ ******************************/
+
 var view = require('./view.js'),
     q = require('Q'),
-    Firebase = require('firebase');
+    Firebase = require('firebase'),
+    Settings = require('./settings.js');
 
 function FireChat() {
 
@@ -44,16 +49,6 @@ function FireChat() {
             .set(null);
     }
 
-    function onAddMessage(message) {
-        firebase.child('chatroom')
-            .child('messages')
-            .push({
-                author: fullName,
-                userId: userId,
-                body: message
-            });
-    }
-
     function onChangeTopic(newTopic) {
         firebase.child('chatroom')
             .child('topic')
@@ -64,7 +59,7 @@ function FireChat() {
         var deferred = q.defer();
 
         // Initialise firebase
-        firebase = new Firebase('https://jsinsa2015.firebaseio.com/');
+        firebase = new Firebase(Settings.firebaseUrl);
 
         // Do anonymous auth
         firebase.authAnonymously(function(error, context) {
@@ -113,6 +108,16 @@ function FireChat() {
                 view.setTopic(snapshot.val());
             });
 
+    }
+
+    function onAddMessage(message) {
+        firebase.child('chatroom')
+            .child('messages')
+            .push({
+                author: fullName,
+                userId: userId,
+                body: message
+            });
     }
 
     function listenForMessages() {

@@ -2,9 +2,14 @@
 /* jshint -W097 */
 'use strict';
 
+/******************************
+ * 1 - Initialisation
+ ******************************/
+
 var view = require('./view.js'),
     q = require('Q'),
-    Firebase = require('firebase');
+    Firebase = require('firebase'),
+    Settings = require('./settings.js');
 
 function FireChat() {
 
@@ -35,7 +40,7 @@ function FireChat() {
         var deferred = q.defer();
 
         // Initialise firebase
-        firebase = new Firebase('https://jsinsa2015.firebaseio.com/');
+        firebase = new Firebase(Settings.firebaseUrl);
 
         // Do anonymous auth
         firebase.authAnonymously(function(error, context) {
